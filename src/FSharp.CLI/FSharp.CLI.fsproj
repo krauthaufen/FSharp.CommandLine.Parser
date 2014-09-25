@@ -42,7 +42,10 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Types.fs" />
+    <Compile Include="Attributes.fs" />
+    <Compile Include="ValueParser.fs" />
+    <Compile Include="Parser.fs" />
+    <Compile Include="Extensions.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

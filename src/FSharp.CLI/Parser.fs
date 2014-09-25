@@ -1,195 +1,11 @@
-﻿#if INTERACTIVE
-#else
-namespace FSharp.CLI
-#endif
+﻿namespace FSharp.CLI
 
 open System
 open Microsoft.FSharp.Reflection
 open System.Reflection
 
 [<AutoOpen>]
-module Attributes =
-
-    type DescriptionAttribute(desc : string) =
-        inherit System.Attribute()
-
-        member x.Description = desc
-
-    type CountAttribute(minCount : int, maxCount : int) =
-        inherit System.Attribute()
-        member x.MinCount = minCount
-        member x.MaxCount = maxCount
-
-        new(exaclty) = CountAttribute(exaclty, exaclty)
-
-    type AtLeastAttribute(min : int) =
-        inherit CountAttribute(min, Int32.MaxValue)
-
-    type SwitchesAttribute([<ParamArray>] switches : string[]) =
-        inherit Attribute()
-
-        member x.Switches = switches |> Set.ofArray
-
-    type NoSwitchAttribute() =
-        inherit SwitchesAttribute("")
-
-    type DefaultAttribute(value : obj) =
-        inherit Attribute()
-
-        member x.DefaultValue = value
-
-[<AutoOpen>]
-module ValueParser =
-    open System.Collections.Generic
-    type ParserResult = Error of string | Success | Done
-
-    type ParserMap = private { parsers : Dictionary<Type, ref<Option<obj>> -> string -> ParserResult> }
-
-    type ParserMapBuilder() =
-        member x.Yield(()) = { parsers = Dictionary() }
-
-        [<CustomOperation("parser")>]
-        member x.Parser(p : ParserMap, f : Option<'a> -> string -> ParserResult * 'a) =
-
-            let objParser (r : ref<Option<obj>>) (str : string) =
-                let (res,newValue) =
-                    match !r with
-                        | Some old ->
-                            match old with
-                                | :? 'a as old ->
-                                    let (res, v) = f (Some old) str
-                                    match res with
-                                        | Error e -> Error e, old
-                                        | _ -> res, v
-                                | _ -> 
-                                    printfn "invalid type for %A" typeof<'a> 
-                                    f None str
-                           
-                        | None ->
-                            f None str
-                match res with
-                    | Success|Done -> 
-                        r := Some (newValue :> obj)
-                    | _ -> 
-                        ()
-                res
-
-            p.parsers.Add(typeof<'a>, objParser)
-
-            p
-
-        member x.Run(map : ParserMap) =
-            let parsers = map.parsers |> Seq.map (fun (KeyValue(k,v)) -> k,v) |> Seq.toList
-
-
-            // create list-parsers
-            for (t, p) in parsers do
-                let listType = typedefof<list<_>>.MakeGenericType t
-
-                let consM = listType.GetMethod "Cons"
-                let nilM = (listType.GetProperty "Empty").GetMethod
-
-                let cons (head : obj) (tail : obj) =
-                    consM.Invoke(null, [|head; tail|])
-
-                let nil () =
-                    nilM.Invoke(null, [||])
-
-                let listParser (r : ref<Option<obj>>) (str : string) =
-
-                    let output = ref None
-                    let res = p output str
-                    match res with
-                        | Success | Done ->
-                            match !output with
-                                | Some o ->
-                                    let oldValue =
-                                        match !r with
-                                            | Some l -> l
-                                            | None -> nil()
-
-                                    r := Some (cons o oldValue)
-
-                                    res
-                                | None ->
-                                    res
-                            
-                        | Error e ->
-                            Error e
-
-                map.parsers.Add(listType, listParser)
-
-            // create option-parsers
-            for (t, p) in parsers do
-                let optionType = typedefof<Option<_>>.MakeGenericType t
-                let someM = optionType.GetMethod "Some"
-                let noneM = (optionType.GetProperty "None").GetMethod
-
-                let some o = someM.Invoke(null, [|o|])
-                let none() = noneM.Invoke(null, [||])
-
-                let optionParser (r : ref<Option<obj>>) (str : string) =
-                    let output = ref None
-                    let res = p output str
-
-                    match res with
-                        | Success | Done -> 
-                            match !output with
-                                | Some o -> 
-                                    r := Some (some o)
-                                    Done
-                                | None ->
-                                    r := None
-                                    Done
-                        | Error e ->
-                            Error e
-
-                map.parsers.Add(optionType, optionParser)
-
-
-
-            map
-
-
-    let parser = ParserMapBuilder()
-
-    let inline tryRead< ^a when ^a : (static member TryParse : string * byref<'a> -> bool)>  =
-        fun str ->
-            let mutable result = Unchecked.defaultof< ^a>
-            let success = (^a : (static member TryParse : string * byref<'a> -> bool) (str, &result))
-            if success then
-                (Success, result)
-            else
-                (Error "could not parse", result)
-
-    let parseMap =
-        parser {
-            parser (fun _ str -> Success, str)
-            parser (fun _ -> tryRead<int>)
-            parser (fun _ -> tryRead<float>)
-        }
-
-
-    let getParser (t : Type) =
-        match parseMap.parsers.TryGetValue t with
-            | (true, p) ->
-                p
-            | _ ->
-                fun _ _ -> Error (sprintf "no parser for type: %A" t)
-
-
-
-[<AutoOpen>]
 module Parser =
-
-    let inline tryRead< ^a when ^a : (static member TryParse : string * byref<'a> -> bool)> : string -> Option< ^a> =
-        fun str ->
-            let mutable result = Unchecked.defaultof< ^a>
-            let success = (^a : (static member TryParse : string * byref<'a> -> bool) (str, &result))
-            if success then
-                Some result
-            else
-                None
 
     let private getAttribute<'a> (pi : PropertyInfo) =
         let att = pi.GetCustomAttribute(typeof<'a>, true)
@@ -205,23 +21,7 @@ module Parser =
 
     let private description (pi : PropertyInfo) =
         pi |> getAttributeValue<DescriptionAttribute,_> (fun d -> d.Description)
-
-    let private counts (pi : PropertyInfo) =
-        match pi |> getAttributeValue<CountAttribute,_> (fun d -> d.MinCount, d.MaxCount) with
-            | Some tup -> tup
-            | None ->
-                let t = pi.PropertyType
-                let i = t.GetInterface("IEnumerable`1")
-                
-                if i <> null then
-                    (0,Int32.MaxValue)
-                elif t = typeof<bool> then
-                    (0,0)
-                elif t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<Option<_>> then
-                    (0,1)
-                else
-                    (1,1)
-                    
+    
 
     let private defaultValue (pi : PropertyInfo) =
         let user = pi |> getAttributeValue<DefaultAttribute,_> (fun d -> d.DefaultValue)
@@ -242,7 +42,7 @@ module Parser =
         pi |> getAttributeValue<SwitchesAttribute,_> (fun d -> d.Switches)
         
 
-    let withShortNames (userDefined : Map<string, Option<list<string>>>) (properties : seq<PropertyInfo>) =
+    let private withShortNames (userDefined : Map<string, Option<list<string>>>) (properties : seq<PropertyInfo>) =
         let userMap = 
             userDefined |> Map.toList 
                         |> List.choose (fun (k,v) -> match v with | Some v -> Some (k,v) | None -> None)
@@ -285,17 +85,17 @@ module Parser =
                 | None -> (pi, [])
         ) |> Seq.toList
   
-    let patternName (str : string) =
+    let private patternName (str : string) =
         str.Replace(".", @"\.")
                     
-    let rx (str : string) =
+    let private rx (str : string) =
         System.Text.RegularExpressions.Regex(str)
 
-    type ListHelper<'a>() =
+    type private ListHelper<'a>() =
         static member Reverse(l : list<'a>) =
             l |> List.rev
 
-    let usageAndParser<'a> : (unit -> string) * (string[] -> Option<'a>) =
+    let usageAndParser<'a> : string * (string[] -> Option<'a>) =
         
         let fields = FSharpType.GetRecordFields(typeof<'a>)
         
@@ -341,16 +141,9 @@ module Parser =
                 None
 
         
-        let append (pi : PropertyInfo) (r : ref<Option<obj>>) =
-            let (min,max) = counts pi
-            let count =
-                match !r with
-                    | Some _ -> ref 1
-                    | None -> ref 0
-
+        let append (pi : PropertyInfo) =
             let parser = getParser pi.PropertyType
-
-            parser r
+            parser
 
         let parse = 
             fun (str : string[]) ->
@@ -436,7 +229,7 @@ module Parser =
 
         
 
-        let usage() =
+        let usage =
             let self = System.Diagnostics.Process.GetCurrentProcess().ProcessName |> System.IO.Path.GetFileNameWithoutExtension
 
             let usage = System.Text.StringBuilder()
@@ -516,8 +309,6 @@ module Parser =
 
         (usage, parse)
 
-
-
     let usage<'a> =
         let (u,_) = usageAndParser<'a>
         u
@@ -525,41 +316,3 @@ module Parser =
     let parser<'a> =
         let (_,p) = usageAndParser<'a>
         p
-
-
-module Tests =
-    type Parameters = {
-
-        [<NoSwitch>]
-        [<Description("the input files for the tool")>]
-        inputs : list<string>
-
-        [<Description("sets the output-file for the tool")>]
-        output : Option<string>
-
-        [<Default(7)>]
-        [<Description("sets the iterations for the tool")>]
-        [<Switches("n", "iter", "iterations")>]
-        iterations : int
-
-        [<Description("includes the given files")>]
-        includes : list<string>
-
-        [<Description("enables the batch mode")>]
-        batch : bool
-    }
-
-
-    let p = parser<Parameters>
-    let usage = usage<Parameters>
-    let run() =
-        let args = [|"test.txt"; "--output"; "out.txt"; "hugo.txt"; "-b"; "sepp.txt"; "-i"; "10" |]
-
-        usage() |> printfn "%s"
-
-        let res = p args
-        match res with
-            | Some res ->
-                printfn "%A" res
-            | None ->
-                usage() |> printfn "usage: %s"
