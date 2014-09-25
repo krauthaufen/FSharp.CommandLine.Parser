@@ -27,14 +27,28 @@ type Parameters = {
     required : string
 }
 
+let entry = entryPoint<Parameters>
 
-let test0() =
+let test0ShouldWork() =
     let args = [|"test.txt"; "--output"; "out.txt"; "-o"; "otherOutput.txt"; "hugo.txt"; "-b"; "sepp.txt"; "-i"; "10"; "-r"; "a"|]
-    args |> entryPoint<Parameters> (fun p ->
+    args |> entry (fun p ->
+        printfn "%A" p
+        0
+    )
+
+let test1ShouldFail() =
+    let args = [|"test.txt"; "-o"; "out.txt"; "hugo.txt"; "-b"; "sepp.txt"; "-i"; "10"|]
+    args |> entry (fun p ->
         printfn "%A" p
         0
     )
 
 [<EntryPoint>]
 let main args = 
-    test0()
+    printfn "Test 0: (should work)"
+    test0ShouldWork() |> ignore
+
+    printfn "\r\n\r\nTest 1: (should fail)"
+    test1ShouldFail() |> ignore
+
+    0

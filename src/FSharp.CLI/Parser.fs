@@ -91,7 +91,7 @@ module Parser =
     let private rx (str : string) =
         System.Text.RegularExpressions.Regex(str)
 
-    type private ListHelper<'a>() =
+    type ListHelper<'a>() =
         static member Reverse(l : list<'a>) =
             l |> List.rev
 
