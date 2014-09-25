@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>FSharp.CLI</id>
+		<title>FSharp.CLI</title>
+        <version>1.0.0</version>
+        <authors>krauthaufen</authors>
+        <owners>krauthaufen</owners>
+        <licenseUrl>http://opensource.org/licenses/MIT</licenseUrl>
+        <projectUrl>https://github.com/krauthaufen/FSharp.CLI</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>FSharp.CLI provides functions for parsing command-line-arguments using F# record-types</description>
+		<summary>FSharp.CLI provides functions for parsing command-line-arguments using F# record-types</summary>
+        <releaseNotes>initial version</releaseNotes>
+		<copyright>Copyright © 2014 krauthaufen</copyright>
+        <language>en-US</language>
+        <tags>CLI commandline parser FSharp</tags>
+    </metadata>
+    <files>
+        <file src="Release\FSharp.CLI.dll" target="lib\net45\FSharp.CLI.dll" />
+        <file src="Release\FSharp.CLI.pdb" target="lib\net45\FSharp.CLI.pdb" />
+        <file src="Release\FSharp.CLI.xml" target="lib\net45\FSharp.CLI.xml" />
+    </files>
+</package>

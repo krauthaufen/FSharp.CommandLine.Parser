@@ -8,7 +8,7 @@ open System.Runtime.InteropServices
 set of attributes. Change these attribute values to modify the information
 associated with an assembly. *)
 [<assembly: AssemblyTitle("FSharp.CLI.Tests")>]
-[<assembly: AssemblyDescription("")>]
+[<assembly: AssemblyDescription("Provides functions for parsing command-line-arguments using F# records")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("")>]
 [<assembly: AssemblyProduct("FSharp.CLI.Tests")>]
