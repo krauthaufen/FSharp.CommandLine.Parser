@@ -10,4 +10,4 @@ I'm planning to use a GetOpt implementation underneath to ensure posix comliance
 
 NuGet
 =====
-FSharp.CLI can also be referenced via NuGet: https://www.nuget.org/packages/FSharp.CL
+FSharp.CLI can also be referenced via NuGet: https://www.nuget.org/packages/FSharp.CLI
